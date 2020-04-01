@@ -1,4 +1,0 @@
-# Tweetbot
-
-+ Bot
-+ GetQuiz
