@@ -2,25 +2,16 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/gocarina/gocsv"
 	"log"
 	"net/http"
-)
-
-const (
-	consumerKey = "******************************"
-
-	consumerSecret = "******************************"
-
-	accessToken = "******************************"
-
-	accessTokenSecret = "******************************"
+	"os"
 )
 
 type Quiz struct {
-	No       int
-	Quiz     string
-	Ansewr   string
-	HashTags []string
+	No     string `csv:"No"`
+	Quiz   string `csv:"Quiz"`
+	Ansewr string `csv:"Ansewr"`
 }
 
 func main() {
@@ -32,20 +23,40 @@ func main() {
 
 func awsQuiz(ctx *gin.Context) {
 
-	quiz := &Quiz{
-		1,
-		`顧客関係管理 (CRM) アプリケーションが、Application Load Balancer の背後にある複数のア
-		ベイラビリティーゾーン内の Amazon EC2 インスタンスで実行されています。
-		これらのインスタンスのいずれかに障害が発生した場合、どうなりますか。
-		A. ロードバランサーが、障害が発生したインスタンスへのリクエスト送信を停止する。
-		B. ロードバランサーが、障害が発生したインスタンスを終了する。
-		C. ロードバランサーが、障害が発生したインスタンスを自動的に置換する。
-		D. ロードバランサーが、インスタンスが置換されるまで 504 ゲートウェイタイムアウトエ
-		ラーを返す。`,
-		"",
-		[]string{"#aws, "},
+	quizList, err := getCsvList()
+	if err != nil {
+		log.Println(err)
+		ctx.JSON(http.StatusHTTPVersionNotSupported, "error")
+		return
+	}
+
+	num := 0
+
+	var quiz *Quiz
+	for i, v := range quizList {
+		if i == num {
+			quiz = v
+		}
 	}
 	log.Println(quiz)
 
-	ctx.JSON(http.StatusOK, quiz)
+	ctx.JSON(http.StatusOK, &quiz)
+}
+
+func getCsvList() ([]*Quiz, error) {
+	file, err := os.Open("csv/aws.csv")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	quizList := []*Quiz{}
+	err = gocsv.UnmarshalFile(file, &quizList)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println(quizList)
+
+	return quizList, nil
 }
