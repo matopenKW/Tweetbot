@@ -12,7 +12,7 @@ import (
 type Quiz struct {
 	no       int
 	quiz     string
-	ansewr   string
+	answer   string
 	hashTags []string
 }
 
@@ -37,28 +37,21 @@ func Tweet(w http.ResponseWriter, r *http.Request) {
 
 	//	txt := "顧客は、ある Web アプリケーションを使用して、Amazon S3 バケットに注文データをアッ プロードすることができます。すると、Amazon S3 イベントが発生し、Lambda 関数がトリ ガされ、メッセージが SQS キューに挿入されます。1 つの EC2 インスタンスによって、キュ ーからメッセージが読み取られて処理され、一意の注文番号で分割された DynamoDB テーブ ルに格納されます。来月のトラフィック量は 10 倍に増える見込みです。ソリューションアー キテクトは、スケーリングに関する問題がアーキテクチャに発生する可能性を調べています。 増加するトラフィックを処理するためにスケーリングできるようにする際、設計の見直しが最 も必要であると思われるコンポーネントはどれですか。"
 	// txt := "Twitter Botを作ろう"
-	quiz :=
-		`AWSQius 一日一問
-		EC2インスタンスに付与できるタグの上限は次のうちどれですか？
-		ア. 10
-		イ. 20
-		ウ. 40
-		エ. 50
-	`
+	quiz := getQuiz()
+
 	//tweet, res, err := client.Statuses.Update("ツイートする本文", nil)
-	t, res, e := client.Statuses.Update(quiz, nil)
+	t, res, e := client.Statuses.Update(quiz.quiz, nil)
 	if e != nil {
 		log.Println("err", e)
 	}
 	// ツイート情報とhttpレスポンス
 	log.Println("res", res)
 
-	answer := "[答え] エ"
 	params := &twitter.StatusUpdateParams{
 		InReplyToStatusID: t.ID,
 	}
 
-	_, res, e = client.Statuses.Update(answer, params)
+	_, res, e = client.Statuses.Update(quiz.answer, params)
 	if e != nil {
 		log.Println("err", e)
 	}
@@ -92,9 +85,23 @@ func Reply(w http.ResponseWriter, r *http.Request) {
 	log.Println("tweet", res)
 }
 
-func getTweet() string {
+func getQuiz() *Quiz {
 
 	// 何らかの方法でTweetを取得する
+	quizStr :=
+		`AWSQius 一日一問
+	EC2インスタンスに付与できるタグの上限は次のうちどれですか？
+	ア. 10
+	イ. 20
+	ウ. 40
+	エ. 50
+	`
 
-	return "test anaconda"
+	quiz := &Quiz{
+		no:     1,
+		quiz:   quizStr,
+		answer: "[答え] エ",
+	}
+
+	return quiz
 }
