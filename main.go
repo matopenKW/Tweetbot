@@ -1,17 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"github.com/ChimeraCoder/anaconda"
 	"gopkg.in/ini.v1"
 	"log"
 	"net/http"
-	"net/url"
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 )
 
 type Quiz struct {
@@ -24,46 +19,11 @@ type Quiz struct {
 func main() {
 
 	http.HandleFunc("/tweet", Tweet)
-	http.HandleFunc("/tweet2", Tweet2)
+	http.HandleFunc("/reply", Reply)
 	http.ListenAndServe(":8080", nil)
 }
 
 func Tweet(w http.ResponseWriter, r *http.Request) {
-
-	c, _ := ini.Load("config.conf")
-	consumerKey := c.Section("twitterAPI").Key("consumerKey").String()
-	consumerSecret := c.Section("twitterAPI").Key("consumerSecret").String()
-	accessToken := c.Section("twitterAPI").Key("accessToken").String()
-	accessTokenSecret := c.Section("twitterAPI").Key("accessTokenSecret").String()
-
-	// ConsumerKeyのセット
-	anaconda.SetConsumerKey(consumerKey)
-
-	// ConsumerSecretのセット
-	anaconda.SetConsumerSecret(consumerSecret)
-
-	// AccessTokenとAccessTokenSecretのセット
-	api := anaconda.NewTwitterApi(accessToken, accessTokenSecret)
-
-	ctx := appengine.NewContext(r)
-
-	// apiのHttpClient.TransportにurlfetchのTransportを利用する
-	api.HttpClient.Transport = &urlfetch.Transport{Context: ctx}
-	v := url.Values{}
-
-	// ツイートする
-
-	_, err := api.PostTweet(getTweet(), v)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		fmt.Fprint(w, "Tweet!")
-	}
-}
-
-func Tweet2(w http.ResponseWriter, r *http.Request) {
 	c, _ := ini.Load("config.conf")
 	consumerKey := c.Section("twitterAPI").Key("consumerKey").String()
 	consumerSecret := c.Section("twitterAPI").Key("consumerSecret").String()
@@ -72,21 +32,64 @@ func Tweet2(w http.ResponseWriter, r *http.Request) {
 
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessTokenSecret)
-
 	httpClient := config.Client(oauth1.NoContext, token)
-
 	client := twitter.NewClient(httpClient)
 
-	txt := "test tweet"
-
+	//	txt := "顧客は、ある Web アプリケーションを使用して、Amazon S3 バケットに注文データをアッ プロードすることができます。すると、Amazon S3 イベントが発生し、Lambda 関数がトリ ガされ、メッセージが SQS キューに挿入されます。1 つの EC2 インスタンスによって、キュ ーからメッセージが読み取られて処理され、一意の注文番号で分割された DynamoDB テーブ ルに格納されます。来月のトラフィック量は 10 倍に増える見込みです。ソリューションアー キテクトは、スケーリングに関する問題がアーキテクチャに発生する可能性を調べています。 増加するトラフィックを処理するためにスケーリングできるようにする際、設計の見直しが最 も必要であると思われるコンポーネントはどれですか。"
+	// txt := "Twitter Botを作ろう"
+	quiz :=
+		`AWSQius 一日一問
+		EC2インスタンスに付与できるタグの上限は次のうちどれですか？
+		ア. 10
+		イ. 20
+		ウ. 40
+		エ. 50
+	`
 	//tweet, res, err := client.Statuses.Update("ツイートする本文", nil)
-	_, res, e := client.Statuses.Update(txt, nil)
+	t, res, e := client.Statuses.Update(quiz, nil)
+	if e != nil {
+		log.Println("err", e)
+	}
+	// ツイート情報とhttpレスポンス
+	log.Println("res", res)
+
+	answer := "[答え] エ"
+	params := &twitter.StatusUpdateParams{
+		InReplyToStatusID: t.ID,
+	}
+
+	_, res, e = client.Statuses.Update(answer, params)
+	if e != nil {
+		log.Println("err", e)
+	}
+
+	// ツイート情報とhttpレスポンス
+	log.Println("tweet", res)
+}
+
+func Reply(w http.ResponseWriter, r *http.Request) {
+	c, _ := ini.Load("config.conf")
+	consumerKey := c.Section("twitterAPI").Key("consumerKey").String()
+	consumerSecret := c.Section("twitterAPI").Key("consumerSecret").String()
+	accessToken := c.Section("twitterAPI").Key("accessToken").String()
+	accessTokenSecret := c.Section("twitterAPI").Key("accessTokenSecret").String()
+
+	params := &twitter.StatusUpdateParams{
+		InReplyToStatusID: 1249712564776230913,
+	}
+
+	config := oauth1.NewConfig(consumerKey, consumerSecret)
+	token := oauth1.NewToken(accessToken, accessTokenSecret)
+	httpClient := config.Client(oauth1.NoContext, token)
+	client := twitter.NewClient(httpClient)
+
+	txt := "test reply"
+	_, res, e := client.Statuses.Update(txt, params)
 	if e != nil {
 		log.Println("err", e)
 	}
 	// ツイート情報とhttpレスポンス
 	log.Println("tweet", res)
-
 }
 
 func getTweet() string {
