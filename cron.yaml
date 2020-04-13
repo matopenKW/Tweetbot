@@ -1,0 +1,6 @@
+cron:
+    - description: tweet weather news
+      url: /tweet
+      schedule: every day 11:00
+      timezone: Asia/Tokyo
+    
