@@ -6,6 +6,6 @@ services:
     volumes:
       - .:/go/src/work # マウントディレクトリ指定
     ports:
-      - "8080:8080"
+      - "8090:8090"
     command:
       "go run main.go"
