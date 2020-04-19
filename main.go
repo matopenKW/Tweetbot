@@ -9,5 +9,5 @@ func main() {
 	router := gin.Default()
 	router.GET("/awsQuiz", handler.AwsQuiz)
 
-	router.Run(":8090")
+	router.Run()
 }
