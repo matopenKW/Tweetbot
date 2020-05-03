@@ -15,8 +15,24 @@ import (
 type AwsQuiz struct {
 	SeqNo    string   `json: "SeqNo"`
 	Quiz     string   `json: "Quiz"`
+	Choice   string   `json: "Choice"`
 	Answer   string   `json: "Answer"`
 	hashTags []string `json: "hashTags"`
+}
+
+func (quiz *AwsQuiz) cnvQuizList() []string {
+	limitCount := 150
+	ret := make([]string, 0, 0)
+
+	runes := []rune(quiz.Quiz)
+	for i := 0; i < len(runes); i += limitCount {
+		if i+limitCount < len(runes) {
+			ret = append(ret, string(runes[i:(i+limitCount)]))
+		} else {
+			ret = append(ret, string(runes[i:]))
+		}
+	}
+	return ret
 }
 
 func main() {
@@ -50,10 +66,19 @@ func tweet(ctx *gin.Context) {
 		log.Println("err", err)
 		return
 	}
-	// ツイート情報とhttpレスポンス
-	log.Println("res", res)
 
+	// ツイート情報とhttpレスポンス
 	params := &twitter.StatusUpdateParams{
+		InReplyToStatusID: t.ID,
+	}
+
+	t, res, err = client.Statuses.Update(quiz.Choice, params)
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+
+	params = &twitter.StatusUpdateParams{
 		InReplyToStatusID: t.ID,
 	}
 
@@ -70,17 +95,20 @@ func tweet(ctx *gin.Context) {
 func tweetView(ctx *gin.Context) {
 	quiz, err := getQuiz()
 	if err != nil {
-		ctx.String(http.StatusHTTPVersionNotSupported, "err")
+		log.Println(err)
+		ctx.String(http.StatusHTTPVersionNotSupported, "error")
+		return
 	}
 
-	quiz.Quiz = getHeader() + quiz.Quiz
+	str := getHeader() + quiz.Quiz
 
-	log.Println(quiz)
+	str = str + "\r\n" + quiz.Choice
 
 	if err != nil {
+		log.Println(err)
 		ctx.String(http.StatusHTTPVersionNotSupported, "err")
 	} else {
-		ctx.JSON(http.StatusOK, quiz)
+		ctx.String(http.StatusOK, str)
 	}
 }
 
@@ -95,13 +123,11 @@ func getQuiz() (*AwsQuiz, error) {
 	defer res.Body.Close()
 
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 
 	byteArray, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 
@@ -109,10 +135,8 @@ func getQuiz() (*AwsQuiz, error) {
 
 	var quiz AwsQuiz
 	err = json.Unmarshal(byteArray, &quiz)
-	log.Println(quiz)
 
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 
