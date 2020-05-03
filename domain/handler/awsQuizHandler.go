@@ -21,13 +21,13 @@ func AwsQuiz(ctx *gin.Context) {
 	}
 	defer sqlCon.Close()
 
-	quizList, err := selectQuiz(sqlCon)
+	quiz, err := selectQuiz(sqlCon)
 	if err != nil {
 		log.Println(err)
 		ctx.JSON(http.StatusHTTPVersionNotSupported, "error")
 		return
 	}
-	ctx.JSON(http.StatusOK, quizList)
+	ctx.JSON(http.StatusOK, quiz)
 }
 
 func selectQuiz(sqlCon *gorm.DB) (*model.AwsQuiz, error) {
