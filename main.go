@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/gin-gonic/gin"
 	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
@@ -20,24 +20,13 @@ type AwsQuiz struct {
 }
 
 func main() {
-	http.HandleFunc("/tweet", Tweet)
-	http.HandleFunc("/reply", Reply)
-	http.HandleFunc("/getQuiz", func(w http.ResponseWriter, r *http.Request) {
-		quiz, err := getQuiz()
-
-		log.Println(quiz)
-
-		if err != nil {
-			log.Println(err)
-			fmt.Fprint(w, err)
-		} else {
-			fmt.Fprint(w, quiz)
-		}
-	})
-	http.ListenAndServe(":80", nil)
+	router := gin.Default()
+	router.GET("/tweet", tweet)
+	router.GET("/tweetView", tweetView)
+	router.Run()
 }
 
-func Tweet(w http.ResponseWriter, r *http.Request) {
+func tweet(ctx *gin.Context) {
 	c, _ := ini.Load("config.conf")
 	consumerKey := c.Section("twitterAPI").Key("consumerKey").String()
 	consumerSecret := c.Section("twitterAPI").Key("consumerSecret").String()
@@ -49,8 +38,6 @@ func Tweet(w http.ResponseWriter, r *http.Request) {
 	httpClient := config.Client(oauth1.NoContext, token)
 	client := twitter.NewClient(httpClient)
 
-	//	txt := "顧客は、ある Web アプリケーションを使用して、Amazon S3 バケットに注文データをアッ プロードすることができます。すると、Amazon S3 イベントが発生し、Lambda 関数がトリ ガされ、メッセージが SQS キューに挿入されます。1 つの EC2 インスタンスによって、キュ ーからメッセージが読み取られて処理され、一意の注文番号で分割された DynamoDB テーブ ルに格納されます。来月のトラフィック量は 10 倍に増える見込みです。ソリューションアー キテクトは、スケーリングに関する問題がアーキテクチャに発生する可能性を調べています。 増加するトラフィックを処理するためにスケーリングできるようにする際、設計の見直しが最 も必要であると思われるコンポーネントはどれですか。"
-	// txt := "Twitter Botを作ろう"
 	quiz, err := getQuiz()
 	if err != nil {
 		log.Println("err", err)
@@ -58,7 +45,7 @@ func Tweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//tweet, res, err := client.Statuses.Update("ツイートする本文", nil)
-	t, res, err := client.Statuses.Update(quiz.Quiz, nil)
+	t, res, err := client.Statuses.Update(getHeader()+quiz.Quiz, nil)
 	if err != nil {
 		log.Println("err", err)
 		return
@@ -70,7 +57,7 @@ func Tweet(w http.ResponseWriter, r *http.Request) {
 		InReplyToStatusID: t.ID,
 	}
 
-	_, res, err = client.Statuses.Update(quiz.Answer, params)
+	_, res, err = client.Statuses.Update("答え: "+quiz.Answer, params)
 	if err != nil {
 		log.Println("err", err)
 		return
@@ -80,33 +67,31 @@ func Tweet(w http.ResponseWriter, r *http.Request) {
 	log.Println("tweet", res)
 }
 
-func Reply(w http.ResponseWriter, r *http.Request) {
-	c, _ := ini.Load("config.conf")
-	consumerKey := c.Section("twitterAPI").Key("consumerKey").String()
-	consumerSecret := c.Section("twitterAPI").Key("consumerSecret").String()
-	accessToken := c.Section("twitterAPI").Key("accessToken").String()
-	accessTokenSecret := c.Section("twitterAPI").Key("accessTokenSecret").String()
-
-	params := &twitter.StatusUpdateParams{
-		InReplyToStatusID: 1249712564776230913,
-	}
-
-	config := oauth1.NewConfig(consumerKey, consumerSecret)
-	token := oauth1.NewToken(accessToken, accessTokenSecret)
-	httpClient := config.Client(oauth1.NoContext, token)
-	client := twitter.NewClient(httpClient)
-
-	txt := "test reply"
-	_, res, err := client.Statuses.Update(txt, params)
+func tweetView(ctx *gin.Context) {
+	quiz, err := getQuiz()
 	if err != nil {
-		log.Println("err", err)
+		ctx.String(http.StatusHTTPVersionNotSupported, "err")
 	}
-	// ツイート情報とhttpレスポンス
-	log.Println("tweet", res)
+
+	quiz.Quiz = getHeader() + quiz.Quiz
+
+	log.Println(quiz)
+
+	if err != nil {
+		ctx.String(http.StatusHTTPVersionNotSupported, "err")
+	} else {
+		ctx.JSON(http.StatusOK, quiz)
+	}
+}
+
+func getHeader() string {
+	return "[AWS 認定ソリューションアーキテクト1日1問]\r\n"
 }
 
 func getQuiz() (*AwsQuiz, error) {
-	res, err := http.Get("http://localhost:8080/awsQuiz")
+	c, _ := ini.Load("config.conf")
+	url := c.Section("AwsQuiz").Key("url").String() + "/awsQuiz"
+	res, err := http.Get(url)
 	defer res.Body.Close()
 
 	if err != nil {
