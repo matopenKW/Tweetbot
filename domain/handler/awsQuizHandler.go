@@ -38,17 +38,16 @@ func selectQuiz(sqlCon *gorm.DB) (*model.AwsQuiz, error) {
 		return nil, err
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	min := 1
-	rnd := rand.Intn(cnt) + min
-
 	quiz := &model.AwsQuiz{}
-	err = sqlCon.Table("AWS_QUIZ").Find(&quiz, "seq_no=?", rnd).Error
+	err = sqlCon.Table("AWS_QUIZ").Find(&quiz, "seq_no=?", getSeqNo(cnt)).Error
 
 	return quiz, nil
 }
 
 // 本日のSeqNoを取得
-func getSeqNo() int64 {
-	return 1
+func getSeqNo(limitCount int) int {
+	rand.Seed(time.Now().UnixNano())
+	min := 1
+	rnd := rand.Intn(limitCount) + min
+	return rnd
 }
